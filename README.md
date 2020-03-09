@@ -13,6 +13,18 @@ The whole project can be divided into 6 parts.
 # 1. Reading, preprocessing and loading the data
 ## Data
 - PascalVOC: 2007, 2012
+- TODO
+# 2. Model building
+- TODO
+
+# 3. Training Model
+- TODO
+# 4. Processing Output
+- TODO
+# 5. Evaluating Model
+- TODO
+# 6. Detecting Objects
+- TODO
 
 
 # References

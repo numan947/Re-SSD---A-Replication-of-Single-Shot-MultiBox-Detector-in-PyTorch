@@ -410,19 +410,19 @@ def train(resume=False):
     early_stopping = EarlyStopping(save_model_name=model_checkpoint, patience=4)
     pin_memory = True
 
-    batch_size = 8
+    batch_size = 16
     iterations = 200000
     workers = 5
-    lr = 7e-4
-    decay_lr_at = [7000, 17000, 40000, 80000, 120000, 160000]
-    decay_lr_to = 0.5
+    lr = 8e-4
+    decay_lr_at = [10000, 20000, 40000, 80000, 120000, 160000]
+    decay_lr_to = 0.65
 
-    early_stopper_lr_decrease = 0.7
+    early_stopper_lr_decrease = 0.85
     early_stopper_lr_decrease_count = 7
 
     momentum = 0.9
-    weight_decay = 5e-4
-    grad_clip = 1.0
+    weight_decay = 9e-4
+    grad_clip = 0.991
 
     torch.backends.cudnn.benchmark = True
 
@@ -496,6 +496,7 @@ def train(resume=False):
         early_stopping(vl, model)
         other_state = {'epoch':epoch,'optimizer_state':optimizer.state_dict()}
         torch.save(other_state, other_checkpoint)
+        history.to_csv("/output/HISTORY.csv")
 
         if early_stopping.early_stop:
             if early_stopper_lr_decrease_count>0:
