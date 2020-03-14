@@ -130,8 +130,8 @@ class AuxConvs(nn.Module):
     def init_conv2d(self):
         for c in self.children():
             if isinstance(c, nn.Conv2d):
-                nn.init.xavier_normal_(c.weight)
-                c.bias.data.fill_(0.01)
+                nn.init.kaiming_normal_(c.weight, nonlinearity='relu')
+                c.bias.data.fill_(0.0001)
 
     def forward(self, conv7_feats):
         out = torch.relu(self.conv81(conv7_feats))
@@ -187,8 +187,8 @@ class PredictionConvs(nn.Module):
     def init_conv2d(self):
         for c in self.children():
             if isinstance(c, nn.Conv2d):
-                nn.init.xavier_normal_(c.weight)
-                c.bias.data.fill_(0.01)
+                nn.init.kaiming_normal_(c.weight, nonlinearity='relu')
+                c.bias.data.fill_(0.0001)
 
     def forward(self, conv43_feats, conv7_feats, conv82_feats, conv92_feats, conv102_feats, conv112_feats):
         batch_size = conv43_feats.size(0)

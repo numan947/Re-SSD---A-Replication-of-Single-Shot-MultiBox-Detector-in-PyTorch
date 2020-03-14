@@ -321,6 +321,15 @@ def adjust_learning_rate(optimizer, scale):
         param_group['lr'] = param_group['lr']*scale
     return optimizer
 
+def set_lr(optimizer, lr):
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+    return optimizer
+
+def get_lr(optimizer):
+    for param_group in optimizer.param_groups:
+        return param_group['lr']/2.0
+
 def clear_cuda():
     torch.cuda.empty_cache()
     gc.collect()
@@ -407,30 +416,30 @@ def train(resume=False):
 
     other_checkpoint = data_folder+"oth_checkpoint.pt"
     model_checkpoint = data_folder+"checkpoint.pt"
-    early_stopping = EarlyStopping(save_model_name=model_checkpoint, patience=4)
-    pin_memory = True
+    early_stopping = EarlyStopping(save_model_name=model_checkpoint, patience=7)
+    pin_memory = False
 
-    batch_size = 16
+    batch_size = 8
     iterations = 200000
-    workers = 5
-    lr = 8e-4
-    decay_lr_at = [10000, 20000, 40000, 80000, 120000, 160000]
-    decay_lr_to = 0.65
+    workers = 7
+    lr = 7e-3
+    decay_lr_at = [80000, 120000, 160000, 200000]
+    decay_lr_to = 0.2
 
-    early_stopper_lr_decrease = 0.85
-    early_stopper_lr_decrease_count = 7
+    early_stopper_lr_decrease = 0.5
+    early_stopper_lr_decrease_count = 1000000
 
     momentum = 0.9
-    weight_decay = 9e-4
-    grad_clip = 0.991
-
+    weight_decay = 5e-4
+    grad_clip = 0.9
     torch.backends.cudnn.benchmark = True
 
     optimizer = None
     start_epoch = None
 
     history = pd.DataFrame()
-
+    history.index.name="Epoch"
+    history_path = "./output/HISTORY.csv"
     model = SSD300(n_classes)
     biases = list()
     not_biases = list()
@@ -442,16 +451,29 @@ def train(resume=False):
             else:
                 not_biases.append(param)
 
-    optimizer = RAdam(params=[{'params':biases,'lr':2*lr}, {'params':not_biases}], lr=lr, weight_decay=weight_decay)
+    # optimizer = torch.optim.Adam(params=[{'params':biases,'lr':2*lr},{'params':not_biases}], lr=lr, weight_decay=weight_decay)
+    # optimizer = torch.optim.RMSprop(params=[{'params':biases,'lr':2*lr},{'params':not_biases}], lr=lr, weight_decay=weight_decay, momentum=momentum)
+    optimizer = torch.optim.SGD(params=[{'params':biases,'lr':2*lr},{'params':not_biases}], lr=lr, weight_decay=weight_decay, momentum=momentum)
+
     start_epoch = 0
 
 
     if resume and os.path.exists(other_checkpoint):
-        ocheckpt = torch.load(other_checkpoint)
+        ocheckpt = torch.load(other_checkpoint, map_location=device)
         optimizer.load_state_dict(ocheckpt['optimizer_state'])
         start_epoch = ocheckpt['epoch'] + 1
+        lr = get_lr(optimizer)
+        history = pd.read_csv(history_path)
+        history.index.name="Epoch"
+        model.load_state_dict(torch.load(model_checkpoint, map_location=device))
+        # adjust_learning_rate(optimizer, 100.0)
+        lr = get_lr(optimizer)
 
-        model.load_state_dict(torch.load(model_checkpoint))
+        for state in optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.cuda()
+
 
 
     model = model.to(device)
@@ -471,8 +493,8 @@ def train(resume=False):
                                                    num_workers=workers, pin_memory=pin_memory)
 
 
-    total_epochs = iterations//(len(train_data)//batch_size)
-    decay_lr_at = [it//(len(train_data)//batch_size) for it in decay_lr_at]
+    total_epochs = iterations//(len(train_data)//32)
+    decay_lr_at = [it//(len(train_data)//32) for it in decay_lr_at]
 
 
     print("Training For: {}".format(total_epochs))
@@ -487,7 +509,7 @@ def train(resume=False):
 
         print("EPOCH: {}/{} -- Current LR: {}".format(epoch+1, total_epochs, lr))
         clear_cuda()
-        tl,ta = train_single_epoch(epoch, model, train_loader, optimizer, criterion, plot=False)
+        tl,ta = train_single_epoch(epoch, model, train_loader, optimizer, criterion, plot=False, clip_grad=grad_clip)
         clear_cuda()
         vl, va = evaluate(model, valid_loader, criterion)
 
@@ -496,7 +518,7 @@ def train(resume=False):
         early_stopping(vl, model)
         other_state = {'epoch':epoch,'optimizer_state':optimizer.state_dict()}
         torch.save(other_state, other_checkpoint)
-        history.to_csv("/output/HISTORY.csv")
+        history.to_csv(history_path)
 
         if early_stopping.early_stop:
             if early_stopper_lr_decrease_count>0:

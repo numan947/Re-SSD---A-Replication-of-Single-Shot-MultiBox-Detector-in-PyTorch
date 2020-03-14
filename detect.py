@@ -1,5 +1,5 @@
 from commons import *
-from preprocess import test_image_transform
+from input_processing import test_image_transform
 from output_processing import *
 from PIL import Image, ImageDraw, ImageFont
 
