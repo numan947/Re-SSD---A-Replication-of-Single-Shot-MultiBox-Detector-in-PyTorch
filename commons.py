@@ -77,8 +77,8 @@ def get_priors_cxcy():
     for k, fmap in enumerate(fmaps):
         for i in range(fmap_dims[fmap]):
             for j in range(fmap_dims[fmap]):
-                cx = (i+0.5)/fmap_dims[fmap]
-                cy = (j+0.5)/fmap_dims[fmap]
+                cx = (j+0.5)/fmap_dims[fmap]
+                cy = (i+0.5)/fmap_dims[fmap]
 
                 for ratio in aspect_ratios[fmap]:
                     prior_boxes.append([cx, cy, obj_scales[fmap]*sqrt(ratio), obj_scales[fmap]/sqrt(ratio)])

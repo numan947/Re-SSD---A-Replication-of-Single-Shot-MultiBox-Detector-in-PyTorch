@@ -356,6 +356,12 @@ def print_epoch_stat(epoch_idx, time_elapsed_in_seconds, history=None, train_los
     return history
 
 
+def clip_gradient(optimizer, grad_clip):
+    for group in optimizer.param_groups:
+        for param in group['params']:
+            if param.grad is not None:
+                param.grad.data.clamp_(-grad_clip, grad_clip)
+
 def train_single_epoch(epoch, model, train_loader, optimizer, criterion, clip_grad=1.0, plot=True):
     model.train()
     avgl,avga = 0.0, 0.0
@@ -370,16 +376,15 @@ def train_single_epoch(epoch, model, train_loader, optimizer, criterion, clip_gr
         predicted_locs, predicted_scores = model(images)
 
         loss = criterion(predicted_locs, predicted_scores, boxes, labels)
+        avgl+=loss.item()
 
         optimizer.zero_grad()
         loss.backward()
         if plot:
             plot_grad_flow(model.named_parameters())
 
-        avgl+=loss.item()
-
         if clip_grad is not None:
-            nn.utils.clip_grad_norm_(model.parameters(), clip_grad)
+            clip_gradient(optimizer, clip_grad)
 
         optimizer.step()
 
@@ -416,14 +421,14 @@ def train(resume=False):
 
     other_checkpoint = data_folder+"oth_checkpoint.pt"
     model_checkpoint = data_folder+"checkpoint.pt"
-    early_stopping = EarlyStopping(save_model_name=model_checkpoint, patience=7)
-    pin_memory = False
+    early_stopping = EarlyStopping(save_model_name=model_checkpoint, patience=5)
+    pin_memory = True
 
-    batch_size = 8
-    iterations = 200000
-    workers = 7
-    lr = 7e-3
-    decay_lr_at = [80000, 120000, 160000, 200000]
+    batch_size = 16
+    iterations = 150000
+    workers = 4*torch.cuda.device_count()
+    lr = 1e-3
+    decay_lr_at = [80000, 120000]
     decay_lr_to = 0.2
 
     early_stopper_lr_decrease = 0.5
@@ -431,7 +436,7 @@ def train(resume=False):
 
     momentum = 0.9
     weight_decay = 5e-4
-    grad_clip = 0.9
+    grad_clip = 0.95
     torch.backends.cudnn.benchmark = True
 
     optimizer = None
@@ -451,7 +456,7 @@ def train(resume=False):
             else:
                 not_biases.append(param)
 
-    # optimizer = torch.optim.Adam(params=[{'params':biases,'lr':2*lr},{'params':not_biases}], lr=lr, weight_decay=weight_decay)
+    # optimizer = RAdam(params=[{'params':biases,'lr':2*lr},{'params':not_biases}], lr=lr, weight_decay=weight_decay)
     # optimizer = torch.optim.RMSprop(params=[{'params':biases,'lr':2*lr},{'params':not_biases}], lr=lr, weight_decay=weight_decay, momentum=momentum)
     optimizer = torch.optim.SGD(params=[{'params':biases,'lr':2*lr},{'params':not_biases}], lr=lr, weight_decay=weight_decay, momentum=momentum)
 
@@ -509,13 +514,13 @@ def train(resume=False):
 
         print("EPOCH: {}/{} -- Current LR: {}".format(epoch+1, total_epochs, lr))
         clear_cuda()
-        tl,ta = train_single_epoch(epoch, model, train_loader, optimizer, criterion, plot=False, clip_grad=grad_clip)
+        tl,ta = train_single_epoch(epoch, model, train_loader, optimizer, criterion, plot=True, clip_grad=grad_clip)
         clear_cuda()
         vl, va = evaluate(model, valid_loader, criterion)
 
 
         print_epoch_stat(epoch, time.time()-st, history=history, train_loss=tl, valid_loss=vl)
-        early_stopping(vl, model)
+        early_stopping(tl, model)
         other_state = {'epoch':epoch,'optimizer_state':optimizer.state_dict()}
         torch.save(other_state, other_checkpoint)
         history.to_csv(history_path)
