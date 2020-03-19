@@ -8,6 +8,8 @@ import time, math, datetime, gc
 from torch.optim.optimizer import Optimizer, required
 import numpy as np
 import matplotlib.pyplot as plt
+from apex import amp
+import apex
 
 class RAdam(Optimizer):
 
@@ -362,13 +364,17 @@ def clip_gradient(optimizer, grad_clip):
             if param.grad is not None:
                 param.grad.data.clamp_(-grad_clip, grad_clip)
 
-def train_single_epoch(epoch, model, train_loader, optimizer, criterion, clip_grad=1.0, plot=True):
+def train_single_epoch(epoch, model, train_loader, optimizer, criterion, clip_grad=1.0, plot=True, accumulation_factor=1):
     model.train()
     avgl,avga = 0.0, 0.0
 
     if plot:
         plt.figure(figsize=(13,13))
-    for images, boxes, labels, diffs in tqdm(train_loader, total=len(train_loader)):
+
+    accumulated_loss = 0.0
+    cnt = 0
+    optimizer.zero_grad()
+    for i, (images, boxes, labels, diffs) in enumerate(tqdm(train_loader, total=len(train_loader))):
         images = images.to(device)
         boxes = [b.to(device) for b in boxes]
         labels = [l.to(device) for l in labels]
@@ -376,10 +382,27 @@ def train_single_epoch(epoch, model, train_loader, optimizer, criterion, clip_gr
         predicted_locs, predicted_scores = model(images)
 
         loss = criterion(predicted_locs, predicted_scores, boxes, labels)
-        avgl+=loss.item()
+        accumulated_loss+=loss.item()
+        with amp.scale_loss(loss, optimizer) as scaled_loss:
+            scaled_loss.backward()
+        # loss.backward()
+        cnt+=1
 
-        optimizer.zero_grad()
-        loss.backward()
+        if (i+1)%accumulation_factor == 0:
+            if plot:
+                plot_grad_flow(model.named_parameters())
+
+            if clip_grad is not None:
+                # clip_gradient(optimizer, clip_grad)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), clip_grad)
+
+            optimizer.step()
+            optimizer.zero_grad()
+            avgl+=(accumulated_loss/accumulation_factor)
+            accumulated_loss = 0.0
+            cnt=0
+
+    if accumulated_loss>0.0:
         if plot:
             plot_grad_flow(model.named_parameters())
 
@@ -387,10 +410,14 @@ def train_single_epoch(epoch, model, train_loader, optimizer, criterion, clip_gr
             clip_gradient(optimizer, clip_grad)
 
         optimizer.step()
+        optimizer.zero_grad()
+        avgl+=(accumulated_loss/cnt)
+        accumulated_loss = 0.0
 
     if plot:
         plt.tight_layout()
         plt.savefig("./output/grad_flow/"+str(epoch)+".png", bbox_inches='tight')
+        plt.close()
 
     return avgl/len(train_loader), avga/len(train_loader)
 
@@ -413,30 +440,32 @@ def evaluate(model, valid_loader, criterion):
     return avgl/len(valid_loader), avga/len(valid_loader)
 
 
-def train(resume=False):
-    torch.manual_seed(947)
+def train(seed, resume=False, opt_level='O1', ignore_first=True):
+    clear_cuda()
+    torch.manual_seed(seed)
     data_folder = "./output/"
     keep_difficult = True
     n_classes = len(label_map)
 
     other_checkpoint = data_folder+"oth_checkpoint.pt"
     model_checkpoint = data_folder+"checkpoint.pt"
-    early_stopping = EarlyStopping(save_model_name=model_checkpoint, patience=5)
+    early_stopping = EarlyStopping(save_model_name=model_checkpoint, patience=3)
     pin_memory = True
 
-    batch_size = 16
-    iterations = 150000
+    batch_size = 8
+    accumulation_factor = 2
+    iterations = 100000
     workers = 4*torch.cuda.device_count()
     lr = 1e-3
-    decay_lr_at = [80000, 120000]
+    decay_lr_at = [80000]
     decay_lr_to = 0.2
 
     early_stopper_lr_decrease = 0.5
-    early_stopper_lr_decrease_count = 1000000
+    early_stopper_lr_decrease_count = 7
 
     momentum = 0.9
-    weight_decay = 5e-4
-    grad_clip = 0.95
+    weight_decay = 5e-3
+    grad_clip = None
     torch.backends.cudnn.benchmark = True
 
     optimizer = None
@@ -444,7 +473,7 @@ def train(resume=False):
 
     history = pd.DataFrame()
     history.index.name="Epoch"
-    history_path = "./output/HISTORY.csv"
+    history_path = "./output/HISTORY"+"_SEED_{}".format(seed)+".csv"
     model = SSD300(n_classes)
     biases = list()
     not_biases = list()
@@ -458,18 +487,22 @@ def train(resume=False):
 
     # optimizer = RAdam(params=[{'params':biases,'lr':2*lr},{'params':not_biases}], lr=lr, weight_decay=weight_decay)
     # optimizer = torch.optim.RMSprop(params=[{'params':biases,'lr':2*lr},{'params':not_biases}], lr=lr, weight_decay=weight_decay, momentum=momentum)
-    optimizer = torch.optim.SGD(params=[{'params':biases,'lr':2*lr},{'params':not_biases}], lr=lr, weight_decay=weight_decay, momentum=momentum)
+    # optimizer = torch.optim.SGD(params=[{'params':biases,'lr':2*lr},{'params':not_biases}], lr=lr, weight_decay=weight_decay, momentum=momentum)
+    optimizer = apex.optimizers.FusedLAMB(params=[{'params':biases,'lr':2*lr},{'params':not_biases}], lr=lr, weight_decay=weight_decay)#, momentum=momentum)
+    
+    model = model.to(device)
+    criterion = MultiBoxLoss(model.priors_cxcy).to(device)
+    model, optimizer = amp.initialize(model, optimizer, opt_level=opt_level, loss_scale=1.0)
 
     start_epoch = 0
-
+    
 
     if resume and os.path.exists(other_checkpoint):
         ocheckpt = torch.load(other_checkpoint, map_location=device)
         optimizer.load_state_dict(ocheckpt['optimizer_state'])
         start_epoch = ocheckpt['epoch'] + 1
         lr = get_lr(optimizer)
-        history = pd.read_csv(history_path)
-        history.index.name="Epoch"
+        history = pd.read_csv(history_path, index_col="Epoch")
         model.load_state_dict(torch.load(model_checkpoint, map_location=device))
         # adjust_learning_rate(optimizer, 100.0)
         lr = get_lr(optimizer)
@@ -479,13 +512,14 @@ def train(resume=False):
                 if isinstance(v, torch.Tensor):
                     state[k] = v.cuda()
 
+            amp.load_state_dict(ocheckpt['amp_state'])
 
 
-    model = model.to(device)
-    criterion = MultiBoxLoss(model.priors_cxcy).to(device)
 
-    train_dataset = PascalDataset(data_folder, split="train", keep_difficult=keep_difficult)
-    train_len = int(0.85*len(train_dataset))
+
+
+    train_dataset = PascalDataset(data_folder, split="train", keep_difficult=keep_difficult, resize_dims=(500,500))
+    train_len = int(0.9*len(train_dataset))
     valid_len = len(train_dataset) - train_len
 
     train_data, valid_data = torch.utils.data.dataset.random_split(train_dataset, [train_len, valid_len])
@@ -494,12 +528,15 @@ def train(resume=False):
     valid_loader = torch.utils.data.DataLoader(valid_data, batch_size=batch_size, shuffle=False, collate_fn=train_dataset.collate_fn,
                                                num_workers=workers, pin_memory=pin_memory)
 
-    all_train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=train_dataset.collate_fn,
-                                                   num_workers=workers, pin_memory=pin_memory)
 
 
-    total_epochs = iterations//(len(train_data)//32)
-    decay_lr_at = [it//(len(train_data)//32) for it in decay_lr_at]
+    
+
+    total_epochs = iterations//(len(train_dataset)//32)
+    decay_lr_at = [it//(len(train_dataset)//32) for it in decay_lr_at]
+
+    total_epochs = 125
+    decay_lr_at = [100]
 
 
     print("Training For: {}".format(total_epochs))
@@ -514,15 +551,22 @@ def train(resume=False):
 
         print("EPOCH: {}/{} -- Current LR: {}".format(epoch+1, total_epochs, lr))
         clear_cuda()
-        tl,ta = train_single_epoch(epoch, model, train_loader, optimizer, criterion, plot=True, clip_grad=grad_clip)
+        tl,ta = train_single_epoch(epoch, model, train_loader, optimizer, criterion, plot=False, clip_grad=grad_clip, accumulation_factor=accumulation_factor)
         clear_cuda()
         vl, va = evaluate(model, valid_loader, criterion)
 
 
         print_epoch_stat(epoch, time.time()-st, history=history, train_loss=tl, valid_loss=vl)
         early_stopping(tl, model)
-        other_state = {'epoch':epoch,'optimizer_state':optimizer.state_dict()}
+        other_state = {
+            'epoch': epoch,
+            'optimizer_state': optimizer.state_dict(),
+            'amp_state': amp.state_dict()
+            }
+
         torch.save(other_state, other_checkpoint)
+
+        history.loc[epoch, "LR"] = lr
         history.to_csv(history_path)
 
         if early_stopping.early_stop:

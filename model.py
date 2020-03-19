@@ -207,12 +207,12 @@ class PredictionConvs(nn.Module):
         pred102 = self.cconv102(conv102_feats).permute(0,2,3,1).contiguous().view(batch_size, -1, self.n_classes)
         pred112 = self.cconv112(conv112_feats).permute(0,2,3,1).contiguous().view(batch_size, -1, self.n_classes)
 
-        # print(loc43.shape)
-        # print(loc7.shape)
-        # print(loc82.shape)
-        # print(loc92.shape)
-        # print(loc102.shape)
-        # print(loc112.shape)
+        # print(conv43_feats.shape)
+        # print(conv7_feats.shape)
+        # print(conv82_feats.shape)
+        # print(conv92_feats.shape)
+        # print(conv102_feats.shape)
+        # print(conv112_feats.shape)
 
         locs = torch.cat([loc43, loc7, loc82, loc92, loc102, loc112], dim=1)
         preds = torch.cat([pred43, pred7, pred82, pred92, pred102, pred112], dim=1)
@@ -271,7 +271,9 @@ class MultiBoxLoss(nn.Module):
         n_priors = self.priors_cxcy.size(0)
         n_classes = predicted_scores.size(2)
 
-
+        # print(n_priors)
+        # print(predicted_locs.size(1))
+        # print(predicted_scores.size(1))
         assert n_priors == predicted_scores.size(1) == predicted_locs.size(1)
 
 

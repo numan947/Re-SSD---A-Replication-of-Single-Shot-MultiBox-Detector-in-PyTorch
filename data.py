@@ -117,13 +117,14 @@ def parse_data(voc07_data, voc12_data, output_folder):
 
 
 class PascalDataset(data.Dataset):
-    def __init__(self, data_folder, split, keep_difficult=True):
+    def __init__(self, data_folder, split, keep_difficult=True, resize_dims=(300,300)):
         self.split = split.upper()
 
         assert self.split in {"TRAIN", "TEST"}
 
         self.data_folder = data_folder
         self.keep_difficult = keep_difficult
+        self.resize_dims = resize_dims
 
         with open(os.path.join(data_folder,self.split+"_images.json"), 'r') as j:
             self.images = json.load(j)
@@ -150,7 +151,7 @@ class PascalDataset(data.Dataset):
             labels = label_map[~difficults]
             difficult = difficult[~difficults]
 
-        image, boxes, labels, difficulties = transform(image, boxes, labels, difficults, split=self.split) # converts all but difficults to tensors
+        image, boxes, labels, difficulties = transform(image, boxes, labels, difficults, split=self.split, resize_dims=self.resize_dims) # converts all but difficults to tensors
 
         return image, boxes, labels, difficulties
     def collate_fn(self, batch):

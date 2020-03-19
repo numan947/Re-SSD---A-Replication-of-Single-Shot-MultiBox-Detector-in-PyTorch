@@ -44,13 +44,21 @@ def find_jaccard_overlap(set_1, set_2):
 
 
 def get_priors_cxcy():
+    # fmap_dims = {
+    #     "conv43":38,
+    #     'conv7':19,
+    #     'conv82':10,
+    #     'conv92':5,
+    #     'conv102':3,
+    #     'conv112':1
+    # }
     fmap_dims = {
-        "conv43":38,
-        'conv7':19,
-        'conv82':10,
-        'conv92':5,
-        'conv102':3,
-        'conv112':1
+        "conv43":63,
+        'conv7':31,
+        'conv82':16,
+        'conv92':8,
+        'conv102':6,
+        'conv112':4
     }
     obj_scales = {
         'conv43':0.1,

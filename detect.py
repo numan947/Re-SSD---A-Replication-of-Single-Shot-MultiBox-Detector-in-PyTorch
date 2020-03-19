@@ -2,17 +2,24 @@ from commons import *
 from input_processing import test_image_transform
 from output_processing import *
 from PIL import Image, ImageDraw, ImageFont
+import threading, subprocess, cv2, sys
+import numpy as np
 
+WINDOW_NAME = "SSD DEMO"
+THREAD_RUNNING = False
+IMG_HANDLE = None
 
-def detect_single_image(model, original_image, min_score, max_overlap, top_k, suppress=None):
+def detect_single_image(model, original_image, min_score, max_overlap, top_k, suppress=None, resize_dims=(300,300)):
     model.eval()
-    image = test_image_transform(original_image).to(device)
+    image = test_image_transform(original_image, resize_dims=resize_dims).to(device)
 
-    predicted_locs, predicted_scores = model(image.unsqueeze(0))
+    with torch.no_grad():
+        predicted_locs, predicted_scores = model(image.unsqueeze(0))
+    
     det_boxes, det_labels, det_scores = perform_nms(model.priors_cxcy, model.n_classes, predicted_locs, predicted_scores,
                                                     min_score=min_score, max_overlap=max_overlap, top_k=top_k)
     det_boxes = det_boxes[0].to('cpu')
-    print(det_boxes.shape)
+    print("Total Objects: {}".format(det_boxes.size(0)))
     original_dims = torch.FloatTensor([original_image.width, original_image.height,
                                        original_image.width, original_image.height]).unsqueeze(0)
     det_boxes = det_boxes*original_dims
@@ -31,6 +38,7 @@ def detect_single_image(model, original_image, min_score, max_overlap, top_k, su
             if det_labels[i] in suppress:
                 continue
 
+        print("Detected: "+str(det_labels[i].upper())+", Confidence {0:.2f}".format(100.0*det_scores[i]))
         text = det_labels[i].upper()+" {0:.2f}%".format(100.0*det_scores[i])
         box_location = det_boxes[i].tolist()
         draw.rectangle(xy=box_location, outline=label_color_map[det_labels[i]])
@@ -44,3 +52,63 @@ def detect_single_image(model, original_image, min_score, max_overlap, top_k, su
 
     del draw
     return annotated_image
+
+
+
+def grab_image(cap):
+    global THREAD_RUNNING, IMG_HANDLE
+    
+    while THREAD_RUNNING:
+        _, IMG_HANDLE = cap.read()
+        
+        if IMG_HANDLE is None:
+            print('grab_image(): cap.read() return None...')
+            break
+    THREAD_RUNNING = False
+
+def open_window(height, width):
+    cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(WINDOW_NAME, width, height)
+    cv2.moveWindow(WINDOW_NAME, 0, 0)
+    cv2.setWindowTitle(WINDOW_NAME, 'SSD Detection Demo')
+
+def read_cam_and_detect(model, min_score, max_overlap, top_k, suppress=None,  resize_dims=(300,300)):
+    global THREAD_RUNNING, IMG_HANDLE
+    
+    show_help = True
+    full_screen = False
+    help_text = "'Esc' to Quit, 'H' for Help, 'F' for toggling Fullscreen"
+    font = cv2.FONT_HERSHEY_PLAIN
+    
+    while THREAD_RUNNING:
+        if cv2.getWindowProperty(WINDOW_NAME, 0)<0:
+            break
+        
+        img = IMG_HANDLE
+        
+        if img is not None:
+            annotated_image = detect_single_image(model, Image.fromarray(img), min_score, max_overlap, top_k, suppress, resize_dims)
+            cv2.imshow(WINDOW_NAME, np.array(annotated_image))
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+def camera(model,  min_score, max_overlap, top_k, suppress=None, resize_dims=(300,300), height=500, width=500):
+    if model is not None:
+        model = model.to(device)
+        model.eval()
+    
+    global THREAD_RUNNING
+    
+    cap = cv2.VideoCapture(0)
+    
+    if not cap.isOpened():
+        sys.exit("Failed to open camera!")
+    
+    THREAD_RUNNING = True
+    th = threading.Thread(target=grab_image, args=(cap,))
+    th.start()
+    
+    open_window(height, width)
+    read_cam_and_detect(model, min_score, max_overlap, top_k, suppress, resize_dims)
+    cap.release()
+    cv2.destroyAllWindows()
