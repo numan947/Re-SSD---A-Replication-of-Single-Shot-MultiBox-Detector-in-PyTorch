@@ -1,6 +1,6 @@
 # Description
 
-This is a WIP project that I am currently doing to enrich my knowledge of `PyTorch`, computer vision and deep learning in general. I have used stuffs from other developers and followed tutorials during this project. Here's a short description of what's done:
+This is a project that I have done to enrich my knowledge of `PyTorch`, computer vision and deep learning in general. I have used stuffs from other developers and followed tutorials during this project. Here's a short description of what's done:
 
 **I followed [1] for most of the coding, but tried to structure the whole project in a more meaningful way.**
 

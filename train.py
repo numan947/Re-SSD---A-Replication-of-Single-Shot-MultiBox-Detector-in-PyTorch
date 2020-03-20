@@ -387,7 +387,7 @@ def train_single_epoch(epoch, model, train_loader, optimizer, criterion, clip_gr
             scaled_loss.backward()
         # loss.backward()
         cnt+=1
-
+        del predicted_locs, predicted_scores, images, boxes, labels
         if (i+1)%accumulation_factor == 0:
             if plot:
                 plot_grad_flow(model.named_parameters())
@@ -453,7 +453,7 @@ def train(seed, resume=False, opt_level='O1', resize_dims=(300, 300)):
     pin_memory = True
 
     batch_size = 8
-    accumulation_factor = 3
+    accumulation_factor = 6
     iterations = 100000
     workers = 4*torch.cuda.device_count()
     lr = 1e-3
@@ -577,7 +577,7 @@ def train(seed, resume=False, opt_level='O1', resize_dims=(300, 300)):
                 early_stopping.counter = 0
                 lr*=early_stopper_lr_decrease
                 print("Learning Rate Adjusted")
-                accumulation_factor+=1
+                accumulation_factor*=2
             else:
                 break
 
