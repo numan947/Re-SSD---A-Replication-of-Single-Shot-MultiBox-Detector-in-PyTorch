@@ -1,6 +1,6 @@
 # Description
 
-This is a WIP project that I am currently doing to enrich my knowledge of `PyTorch`, computer vision and deep learning in general. I have used staffs from other developers and followed tutorials during this project. Here's a short description of what's done:
+This is a WIP project that I am currently doing to enrich my knowledge of `PyTorch`, computer vision and deep learning in general. I have used stuffs from other developers and followed tutorials during this project. Here's a short description of what's done:
 
 **I followed [1] for most of the coding, but tried to structure the whole project in a more meaningful way.**
 
@@ -157,7 +157,23 @@ Mean Average Precision (mAP): 0.773 -->
 - Trained for 125 epochs using 85-15 train-validation split.
 - Used `FusedLAMB` optimizer provided in `nvidia-apex` and trained in `opt_level: O1` with an initial learning rate of `0.001` and batch size of 8.
 - When train_loss plateaus, we decrease learning rate by half and increase accumulation factor by one (One gradient update after `batch_size X accumulation_factor` number of forward pass).
-- 
+
+![SSD500 loss so far](./SSD500.png)
+
+<table>
+<tr><th>11 points interpolation</th><th>All points interpolation</th></tr>
+<tr><td>
+
+| Object        | Average Precision|
+| ------------- |:-------------:| 
+
+</td><td>
+
+| Object        | Average Precision|
+| ------------- |:-------------:| 
+
+</td></tr> </table>
+
 # References
 1. https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection
 2. https://github.com/rafaelpadilla/Object-Detection-Metrics
