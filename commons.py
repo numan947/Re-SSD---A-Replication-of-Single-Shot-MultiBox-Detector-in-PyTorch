@@ -18,11 +18,9 @@ voc_labels = ["background",
 label_map = {k:v for v,k in enumerate(voc_labels)}
 rev_label_map = {v:k for k,v in label_map.items()}
 
-distinct_colors = ["#FFFFFF",
-                   '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
-                   '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabebe',
-                   '#469990', '#e6beff', '#9A6324', '#fffac8', '#800000',
-                   '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9']
+distinct_colors = ["#9C2968","#7DEFD7","#2F76BC","#D45CB0","#881241","#202F32","#674AA7","#2FDDB2","#BECE07",
+                   "#67D3CA","#0DC5BA","#15B602","#D939BF","#5149FB","#F675CA","#8BB8E6","#259806","#DF3CBD",
+                   "#5F3113","#244259","#45F07E"]
 label_color_map = {k:distinct_colors[i] for i,k in enumerate(voc_labels)}
 
 

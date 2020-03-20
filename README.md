@@ -158,20 +158,105 @@ Mean Average Precision (mAP): 0.773 -->
 - Used `FusedLAMB` optimizer provided in `nvidia-apex` and trained in `opt_level: O1` with an initial learning rate of `0.001` and batch size of 8.
 - When train_loss plateaus, we decrease learning rate by half and increase accumulation factor by one (One gradient update after `batch_size X accumulation_factor` number of forward pass).
 
-![SSD500 loss so far](./SSD500.png)
+![SSD500](./SSD500_LOSS_CURVE.png)
 
 <table>
 <tr><th>11 points interpolation</th><th>All points interpolation</th></tr>
 <tr><td>
 
 | Object        | Average Precision|
-| ------------- |:-------------:| 
+| ------------- |:-------------:|
+|aeroplane|0.7872772216796875|
+|bicycle|0.8486810326576233|
+|bird|0.7526933550834656|
+|boat|0.6984352469444275|
+|bottle|0.4928324818611145|
+|bus|0.8486955165863037|
+|car|0.8691623210906982|
+|cat|0.8829610347747803|
+|chair|0.5940036177635193|
+|cow|0.8175865411758423|
+|diningtable|0.7390072345733643|
+|dog|0.8534751534461975|
+|horse|0.8613482117652893|
+|motorbike|0.8393173813819885|
+|person|0.7991845607757568|
+|pottedplant|0.49670007824897766|
+|sheep|0.7551979422569275|
+|sofa|0.7793512940406799|
+|train|0.8487297296524048|
+|tvmonitor|0.7618874907493591|
+| **mAP**|**0.766**|
+<!-- {'aeroplane': 0.7872772216796875,
+ 'bicycle': 0.8486810326576233,
+ 'bird': 0.7526933550834656,
+ 'boat': 0.6984352469444275,
+ 'bottle': 0.4928324818611145,
+ 'bus': 0.8486955165863037,
+ 'car': 0.8691623210906982,
+ 'cat': 0.8829610347747803,
+ 'chair': 0.5940036177635193,
+ 'cow': 0.8175865411758423,
+ 'diningtable': 0.7390072345733643,
+ 'dog': 0.8534751534461975,
+ 'horse': 0.8613482117652893,
+ 'motorbike': 0.8393173813819885,
+ 'person': 0.7991845607757568,
+ 'pottedplant': 0.49670007824897766,
+ 'sheep': 0.7551979422569275,
+ 'sofa': 0.7793512940406799,
+ 'train': 0.8487297296524048,
+ 'tvmonitor': 0.7618874907493591}
+
+Mean Average Precision (mAP): 0.766 -->
 
 </td><td>
 
 | Object        | Average Precision|
-| ------------- |:-------------:| 
+| ------------- |:-------------:|
+|aeroplane|0.8150293231010437|
+|bicycle|0.8871524333953857|
+|bird|0.7763484716415405|
+|boat|0.7153856754302979|
+|bottle|0.4932691752910614|
+|bus|0.8798927664756775|
+|car|0.9049410223960876|
+|cat|0.9173511266708374|
+|chair|0.6021901369094849|
+|cow|0.8469548225402832|
+|diningtable|0.7656177878379822|
+|dog|0.8905583620071411|
+|horse|0.8936334252357483|
+|motorbike|0.8688076138496399|
+|person|0.8281049728393555|
+|pottedplant|0.49816861748695374|
+|sheep|0.7786535024642944|
+|sofa|0.8115542531013489|
+|train|0.877693772315979|
+|tvmonitor|0.7875986099243164|
+|**mAP**|**0.792**|
+<!-- {'aeroplane': 0.8150293231010437,
+ 'bicycle': 0.8871524333953857,
+ 'bird': 0.7763484716415405,
+ 'boat': 0.7153856754302979,
+ 'bottle': 0.4932691752910614,
+ 'bus': 0.8798927664756775,
+ 'car': 0.9049410223960876,
+ 'cat': 0.9173511266708374,
+ 'chair': 0.6021901369094849,
+ 'cow': 0.8469548225402832,
+ 'diningtable': 0.7656177878379822,
+ 'dog': 0.8905583620071411,
+ 'horse': 0.8936334252357483,
+ 'motorbike': 0.8688076138496399,
+ 'person': 0.8281049728393555,
+ 'pottedplant': 0.49816861748695374,
+ 'sheep': 0.7786535024642944,
+ 'sofa': 0.8115542531013489,
+ 'train': 0.877693772315979,
+ 'tvmonitor': 0.7875986099243164}
 
+Mean Average Precision (mAP): 0.792 -->
 </td></tr> </table>
 
 # References

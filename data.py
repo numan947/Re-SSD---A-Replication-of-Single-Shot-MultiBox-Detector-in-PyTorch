@@ -116,6 +116,38 @@ def parse_data(voc07_data, voc12_data, output_folder):
     print(t)
 
 
+class PascalGeneratorDataset(data.Dataset):
+    def __init__(self, data_folder, split):
+        self.split = split.upper()
+
+        assert self.split in {"TEST", "TRAIN"}
+
+        self.data_folder = data_folder
+
+        with open(os.path.join(data_folder,self.split+"_images.json"), 'r') as j:
+            self.images = json.load(j)
+        with open(os.path.join(data_folder,self.split+"_objects.json"), 'r') as j:
+            self.objects = json.load(j)
+
+        assert len(self.images) == len(self.objects)
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, i):
+        image = Image.open(self.images[i], mode='r')
+        image = image.convert('RGB')
+
+        objects = self.objects[i] # this is a map/dictionary of boxes, labels and difficulties
+
+        boxes = torch.FloatTensor(objects['boxes'])
+        labels = torch.LongTensor(objects['labels'])
+        difficults = torch.BoolTensor(objects['difficulties'])
+
+        return self.images[i], [boxes], [labels], [difficults]
+
+
+
 class PascalDataset(data.Dataset):
     def __init__(self, data_folder, split, keep_difficult=True, resize_dims=(300,300)):
         self.split = split.upper()
