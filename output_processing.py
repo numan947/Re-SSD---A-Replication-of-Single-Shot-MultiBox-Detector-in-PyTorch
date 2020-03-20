@@ -66,7 +66,11 @@ def perform_nms(priors_cxcy, n_classes, predicted_locs, predicted_scores, min_sc
             image_scores = image_scores[:top_k]
             image_boxes = image_boxes[sort_ind][:top_k]
             image_labels = image_labels[sort_ind][:top_k]
-
+        
+        # don't use gpu after this step is done
+        image_boxes = image_boxes.cpu()
+        image_labels = image_labels.cpu()
+        image_scores = image_scores.cpu()
         all_images_boxes.append(image_boxes)
         all_images_labels.append(image_labels)
         all_images_scores.append(image_scores)

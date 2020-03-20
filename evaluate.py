@@ -9,7 +9,9 @@ from output_processing import perform_nms
 from train import clear_cuda
 from tabulate import tabulate
 
+
 def calculate_11_point_AP(cumulative_precision, cumulative_recall):
+    device = torch.device('cpu')
     recall_thresholds = torch.arange(start=0, end=1.1, step=0.1).tolist()
     precisions = torch.zeros(len(recall_thresholds), dtype=torch.float).to(device)
     
@@ -22,6 +24,7 @@ def calculate_11_point_AP(cumulative_precision, cumulative_recall):
     return precisions.mean()
 
 def calculate_all_point_AP(cumulative_precision, cumulative_recall):
+    device = torch.device('cpu')
     ap = 0.0
     cr_level = 0
     k = 0
@@ -39,13 +42,17 @@ def calculate_all_point_AP(cumulative_precision, cumulative_recall):
         cr_level = valid_cum_recall.max()
         
         k+=1
-        if k>100000:
+        if k>1000000:
+            """This should never happen. But again if it's happening then, either 
+            my implementation is wrong or your dataset have a class which have more than
+            1000000 instances -- which shouldn't happen for fairly small datasets"""
             print("LOOPING PROBLEM IN CALCULATE ALL POINT AP")
             break
         
     return ap
 
 def calculate_mAP(detected_boxes, detected_labels, detected_scores, true_boxes, true_labels, true_diffs, mAP = "11pt"):
+    device = torch.device('cpu')
     assert len(detected_boxes) == len(detected_labels) ==len(detected_scores) == len(true_boxes) == len(true_diffs) == len(true_diffs)
 
     mAP = mAP.upper()
@@ -159,6 +166,8 @@ def test(model, mAP="11PT", resize_dims=(300,300)):
     pin_memory = True
 
     test_dataset = PascalDataset(data_folder, split="test", keep_difficult=keep_difficult, resize_dims=resize_dims)
+    
+    
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, collate_fn=test_dataset.collate_fn,
                              num_workers=workers,pin_memory=pin_memory)
 
@@ -175,15 +184,21 @@ def test(model, mAP="11PT", resize_dims=(300,300)):
 
     with torch.no_grad():
         for i, (images, boxes,labels, diffs) in enumerate(tqdm(test_loader, total=len(test_loader))):
-            images = images.to(device)
-            predicted_locs, predicted_scores = model(images)
-
-            detected_boxes_batch, detected_labels_batch, detected_scores_batch = perform_nms(model.priors_cxcy, model.n_classes, predicted_locs, predicted_scores,
-                                                                                              min_score=0.01, max_overlap=0.45, top_k=200)
-            
-            boxes = [b.to(device) for b in boxes]
-            labels = [l.to(device) for l in labels]
-            diffs = [d.to(device) for d in diffs]
+            try:
+                images = images.to(device)
+                predicted_locs, predicted_scores = model(images)
+                detected_boxes_batch, detected_labels_batch, detected_scores_batch = perform_nms(model.priors_cxcy, model.n_classes, predicted_locs, predicted_scores, min_score=0.01, max_overlap=0.45, top_k=200)
+            except(RuntimeError) as e:
+                if 'out of memory' in str(e):
+                    print("CUDA OUT OF MEMORY FOR image {}".format(test_dataset.images[i]))
+                    clear_cuda()
+                    continue
+                else:
+                    raise e
+            clear_cuda()
+            # boxes = [b.to(device) for b in boxes]
+            # labels = [l.to(device) for l in labels]
+            # diffs = [d.to(device) for d in diffs]
 
 
             detected_boxes.extend(detected_boxes_batch)

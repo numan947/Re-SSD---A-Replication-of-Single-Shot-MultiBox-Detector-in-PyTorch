@@ -223,11 +223,11 @@ class PredictionConvs(nn.Module):
         return locs, preds
 
 
-class SSD300(nn.Module):
+class SSD(nn.Module):
 
     def __init__(self, n_classes):
 
-        super(SSD300, self).__init__()
+        super(SSD, self).__init__()
 
         self.n_classes = n_classes
         self.base = VGGBase()

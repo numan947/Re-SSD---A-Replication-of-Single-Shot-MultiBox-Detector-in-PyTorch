@@ -1,6 +1,6 @@
 import torch.nn as nn
 from commons import *
-from model import MultiBoxLoss, SSD300
+from model import MultiBoxLoss, SSD
 from data import PascalDataset
 from tqdm import tqdm
 import pandas as pd
@@ -440,7 +440,7 @@ def evaluate(model, valid_loader, criterion):
     return avgl/len(valid_loader), avga/len(valid_loader)
 
 
-def train(seed, resume=False, opt_level='O1', ignore_first=True):
+def train(seed, resume=False, opt_level='O1', resize_dims=(300, 300)):
     clear_cuda()
     torch.manual_seed(seed)
     data_folder = "./output/"
@@ -453,7 +453,7 @@ def train(seed, resume=False, opt_level='O1', ignore_first=True):
     pin_memory = True
 
     batch_size = 8
-    accumulation_factor = 2
+    accumulation_factor = 3
     iterations = 100000
     workers = 4*torch.cuda.device_count()
     lr = 1e-3
@@ -474,7 +474,7 @@ def train(seed, resume=False, opt_level='O1', ignore_first=True):
     history = pd.DataFrame()
     history.index.name="Epoch"
     history_path = "./output/HISTORY"+"_SEED_{}".format(seed)+".csv"
-    model = SSD300(n_classes)
+    model = SSD(n_classes)
     biases = list()
     not_biases = list()
 
@@ -504,7 +504,7 @@ def train(seed, resume=False, opt_level='O1', ignore_first=True):
         lr = get_lr(optimizer)
         history = pd.read_csv(history_path, index_col="Epoch")
         model.load_state_dict(torch.load(model_checkpoint, map_location=device))
-        # adjust_learning_rate(optimizer, 100.0)
+        # adjust_learning_rate(optimizer, 0.1)
         lr = get_lr(optimizer)
 
         for state in optimizer.state.values():
@@ -512,14 +512,14 @@ def train(seed, resume=False, opt_level='O1', ignore_first=True):
                 if isinstance(v, torch.Tensor):
                     state[k] = v.cuda()
 
-            amp.load_state_dict(ocheckpt['amp_state'])
+        amp.load_state_dict(ocheckpt['amp_state'])
 
 
 
 
 
-    train_dataset = PascalDataset(data_folder, split="train", keep_difficult=keep_difficult, resize_dims=(500,500))
-    train_len = int(0.9*len(train_dataset))
+    train_dataset = PascalDataset(data_folder, split="train", keep_difficult=keep_difficult, resize_dims=resize_dims)
+    train_len = int(0.85*len(train_dataset))
     valid_len = len(train_dataset) - train_len
 
     train_data, valid_data = torch.utils.data.dataset.random_split(train_dataset, [train_len, valid_len])
@@ -577,6 +577,7 @@ def train(seed, resume=False, opt_level='O1', ignore_first=True):
                 early_stopping.counter = 0
                 lr*=early_stopper_lr_decrease
                 print("Learning Rate Adjusted")
+                accumulation_factor+=1
             else:
                 break
 
