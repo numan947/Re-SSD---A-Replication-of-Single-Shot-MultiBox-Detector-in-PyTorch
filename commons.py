@@ -6,9 +6,11 @@ import os
 import json
 import random
 from math import sqrt
+import matplotlib.pyplot as plt
+cm = plt.get_cmap('gist_rainbow')
+NUM_COLORS=21
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 voc_labels = ["background",
               "aeroplane", "bicycle", "bird", "boat", "bottle","bus", "car","cat","chair","cow","diningtable",
@@ -18,9 +20,8 @@ voc_labels = ["background",
 label_map = {k:v for v,k in enumerate(voc_labels)}
 rev_label_map = {v:k for k,v in label_map.items()}
 
-distinct_colors = ["#9C2968","#7DEFD7","#2F76BC","#D45CB0","#881241","#202F32","#674AA7","#2FDDB2","#BECE07",
-                   "#67D3CA","#0DC5BA","#15B602","#D939BF","#5149FB","#F675CA","#8BB8E6","#259806","#DF3CBD",
-                   "#5F3113","#244259","#45F07E"]
+distinct_colors = [cm(1.*i/NUM_COLORS) for i in range(NUM_COLORS)]
+distinct_colors = [tuple([int(l*255.0) for l in x]) for x in distinct_colors]
 label_color_map = {k:distinct_colors[i] for i,k in enumerate(voc_labels)}
 
 

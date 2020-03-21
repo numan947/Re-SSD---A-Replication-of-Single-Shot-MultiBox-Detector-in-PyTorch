@@ -1,7 +1,7 @@
 from commons import *
 from input_processing import test_image_transform
 from output_processing import *
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageColor
 import threading, subprocess, cv2, sys
 import numpy as np
 from torch.utils.data import DataLoader

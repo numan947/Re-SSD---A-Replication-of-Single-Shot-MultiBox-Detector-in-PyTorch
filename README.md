@@ -12,6 +12,21 @@ The whole project can be divided into 6 parts.
 5. Evaluating the model using mAP (11pt & all pt) on testing data
 6. Detecting objects in images, videos and live feeds.
 
+## Some results
+![](./demo_images/000037.jpg_predicted.jpg)
+![](./demo_images/000527.jpg_predicted.jpg)
+![](./demo_images/000644.jpg_predicted.jpg)
+![](./demo_images/001065.jpg_predicted.jpg)
+![](./demo_images/001831.jpg_predicted.jpg)
+![](./demo_images/003323.jpg_predicted.jpg)
+![](./demo_images/003434.jpg_predicted.jpg)
+![](./demo_images/003505.jpg_predicted.jpg)
+![](./demo_images/005808.jpg_predicted.jpg)
+![](./demo_images/006207.jpg_predicted.jpg)
+![](./demo_images/007348.jpg_predicted.jpg)
+![](./demo_images/007504.jpg_predicted.jpg)
+
+
 ## 1. Reading, preprocessing and loading the data
 ### Data
 - PascalVOC: 2007, 2012: These data are parsed and processed using some random transformations which can be found in `data.py` and `input_processing.py`. More specifically, `transform` function inside `input_processing.py` performs the transformations.
