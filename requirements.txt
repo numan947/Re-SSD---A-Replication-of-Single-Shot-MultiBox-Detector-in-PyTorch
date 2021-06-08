@@ -3,7 +3,7 @@
 # Re:SSD - An Implementation of Single Shot MultiBox Detector/data.py: 7
 # Re:SSD - An Implementation of Single Shot MultiBox Detector/detect.py: 4
 # Re:SSD - An Implementation of Single Shot MultiBox Detector/main.py: 9
-Pillow == 7.0.0
+Pillow == 8.2.0
 
 # Re:SSD - An Implementation of Single Shot MultiBox Detector/train.py: 11,12
 apex == 0.1
