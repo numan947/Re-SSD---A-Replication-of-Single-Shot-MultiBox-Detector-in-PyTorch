@@ -14,7 +14,7 @@ matplotlib == 3.1.1
 
 # Re:SSD - An Implementation of Single Shot MultiBox Detector/detect.py: 6
 # Re:SSD - An Implementation of Single Shot MultiBox Detector/train.py: 9
-numpy == 1.18.1
+numpy == 1.22.0
 
 # Re:SSD - An Implementation of Single Shot MultiBox Detector/detect.py: 5
 opencv_contrib_python == 4.2.0.32
