@@ -36,7 +36,7 @@ tabulate == 0.8.6
 # Re:SSD - An Implementation of Single Shot MultiBox Detector/model.py: 1,2
 # Re:SSD - An Implementation of Single Shot MultiBox Detector/output_processing.py: 2
 # Re:SSD - An Implementation of Single Shot MultiBox Detector/train.py: 8
-torch == 1.4.0
+torch == 1.13.1
 
 # Re:SSD - An Implementation of Single Shot MultiBox Detector/commons.py: 3
 # Re:SSD - An Implementation of Single Shot MultiBox Detector/model.py: 4
